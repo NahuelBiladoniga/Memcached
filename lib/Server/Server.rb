@@ -10,23 +10,25 @@ class Server
 
   def initialize(address,port)
     @socket = TCPServer.open(address, port)
-    @cache = Cache.new
     puts "Server started."
+
+    @cache = Cache.new
 
     run_server
   end
 
+  private
   def run_server
     loop do
       Thread.new(@socket.accept) do |client|
         puts "open session of: #{client}"
         run(client)
       end
-    end.join
+    end
   end
 
   def run(client)
-    loop {
+    loop do
       cmd = client.gets
 
       if session_was_closed(client,cmd)
@@ -67,7 +69,7 @@ class Server
 
         end
       end
-    }
+    end
   end
 
   def retrival_operation(cmd)

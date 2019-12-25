@@ -1,50 +1,5 @@
 require 'monitor'
 
-class Node
-
-  def initialize(data)
-    @data = data
-    @next_node = nil
-    @prev_node = nil
-  end
-
-  attr_accessor :data, :next_node,:prev_node
-
-end
-
-class DataValue
-
-  @@cas_unique = 1
-
-  def initialize(key,flag,exp_time,data_length,data)
-    @key = key
-    @flag = flag
-    @exp_time = exp_time.to_i == 0 ? 0 :
-    (exp_time.to_i > 2592000 ? exp_time.to_i : Time.now.to_i + exp_time.to_i)
-    @data_length = data_length
-    @data = data
-    @cas = @@cas_unique
-    @@cas_unique += 1
-  end
-
-  def change_data(data_length,data)
-    @data_length = data_length
-    @data = data
-  end
-
-  def print_with_cas
-    return "VALUE #{@key} #{@flag} #{@data_length} #{@cas}\r\n#{@data}\r\n"
-  end
-
-  def print
-    return "VALUE #{@key} #{@flag} #{@data_length}\r\n#{@data}\r\n"
-  end
-
-  attr_accessor :exp_time
-  attr_reader :key,:flag,:cas,:data,:data_length
-
-end
-
 class Cache extend MonitorMixin
 
   include MonitorMixin
@@ -55,6 +10,9 @@ class Cache extend MonitorMixin
     @hash_table = Hash.new
     @first_node = nil
     @last_node = nil
+
+    memory_crawler(5)
+
   end
 
   def get_values(cas,keys)
@@ -90,6 +48,8 @@ class Cache extend MonitorMixin
       return result
     end
   end
+
+  private
 
   def set(key,flag,exp_time,data_length,data)
     new_data = DataValue.new(key,flag,exp_time,data_length,data)
@@ -238,4 +198,71 @@ class Cache extend MonitorMixin
     delete_node(node)
     prepend_node(node)
   end
+
+  def memory_crawler(wait_time)
+    Thread.new do
+      loop do
+        sleep(10)
+        self.synchronize do
+
+          node_iterator = @last_node
+
+          while node_iterator != nil
+            next_node= node_iterator.prev_node
+
+            expired_key(node_iterator.data.key)
+
+            node_iterator = next_node
+          end
+
+        end
+      end
+    end
+  end
+
+end
+
+class Node
+
+  def initialize(data)
+    @data = data
+    @next_node = nil
+    @prev_node = nil
+  end
+
+  attr_accessor :data, :next_node,:prev_node
+
+end
+
+class DataValue
+
+  @@cas_unique = 1
+
+  def initialize(key,flag,exp_time,data_length,data)
+    @key = key
+    @flag = flag
+    @exp_time = exp_time.to_i == 0 ? 0 :
+    (exp_time.to_i > 2592000 ? exp_time.to_i : Time.now.to_i + exp_time.to_i)
+    @data_length = data_length
+    @data = data
+    @cas = @@cas_unique
+    @@cas_unique += 1
+  end
+
+  def change_data(data_length,data)
+    @data_length = data_length
+    @data = data
+  end
+
+  def print_with_cas
+    return "VALUE #{@key} #{@flag} #{@data_length} #{@cas}\r\n#{@data}\r\n"
+  end
+
+  def print
+    return "VALUE #{@key} #{@flag} #{@data_length}\r\n#{@data}\r\n"
+  end
+
+  attr_accessor :exp_time
+  attr_reader :key,:flag,:cas,:data,:data_length
+
 end
