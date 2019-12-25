@@ -1,11 +1,11 @@
 require 'socket'
-require_relative '../Utils/CommandParsing'
+require_relative '../Utils/InputParser'
 require_relative '../Utils/DataStructures'
 
 class Server
   include CommandParsing
 
-  ADD_CMDS = ["set","add","replace"]
+  ADD_CMDS = ["set","add","replace","cas"]
   CONCAT_CMD = ["append","prepend"]
 
   def initialize(address,port)
@@ -46,6 +46,7 @@ class Server
           values.each do |value|
             client.puts value
           end
+          client.puts "END"
 
         else
 
@@ -71,7 +72,8 @@ class Server
 
   def retrival_operation(cmd)
     cmd_splited = cmd.split(" ")
-    @cache.get_values((cmd_splited[0].eql? "gets"),cmd_splited[1..cmd_splited.length-1])
+    response = @cache.get_values((cmd_splited[0].eql? "gets"),cmd_splited[1..cmd_splited.length-1])
+    (cmd_splited[5].eql? "noreply") ? "" : response
   end
 
   def storage_operation(cmd,data)
@@ -84,7 +86,8 @@ class Server
     data_length = cmd_splited[4]
 
     if ADD_CMDS.include? name
-      @cache.add(name,key,flags,exp_time,data_length,data)
+      @cache.insert(name,key,flags,exp_time,data_length,data,
+        (name.eql? "cas") ? cmd_splited[5] : nil)
     else
       @cache.concat_data(name,key,data_length,data)
     end

@@ -1,5 +1,4 @@
 require 'monitor'
-require_relative 'CommandParsing'
 
 class Node
 
@@ -20,7 +19,8 @@ class DataValue
   def initialize(key,flag,exp_time,data_length,data)
     @key = key
     @flag = flag
-    @exp_time = exp_time
+    @exp_time = exp_time.to_i == 0 ? 0 :
+    (exp_time.to_i > 2592000 ? exp_time.to_i : Time.now.to_i + exp_time.to_i)
     @data_length = data_length
     @data = data
     @cas = @@cas_unique
@@ -33,11 +33,11 @@ class DataValue
   end
 
   def print_with_cas
-    return "VALUE #{@key} #{@flag} #{@exp_time} #{@data_length} #{@cas}\r\n#{@data}\r\n"
+    return "VALUE #{@key} #{@flag} #{@data_length} #{@cas}\r\n#{@data}\r\n"
   end
 
   def print
-    return "VALUE #{@key} #{@flag} #{@exp_time} #{@data_length}\r\n#{@data}\r\n"
+    return "VALUE #{@key} #{@flag} #{@data_length}\r\n#{@data}\r\n"
   end
 
   attr_accessor :exp_time
@@ -62,46 +62,113 @@ class Cache extend MonitorMixin
 
       values = []
       keys.each do |key|
-        if @hash_table[key]!=nil
+        if @hash_table[key]!=nil && !expired_key(key)
           data = @hash_table[key].data
           values.push(cas ? data.print_with_cas : data.print)
         end
       end
+
       return values
 
     end
   end
 
-  def add(type,key,flag,exp_time,data_length,data)
+  def insert(type,key,flag,exp_time,data_length,data,*cas_unique)
     self.synchronize do
-      data = DataValue.new(key,flag,exp_time,data_length,data)
 
-      if @hash_table.has_key? key
-        node = @hash_table[key]
-
-        if type.eql? "add"
-          result =  "NOT_STORED"
-          data = @hash_table[key].data
-        else
-          result = "STORED"
-        end
-
-        update_node(node,data)
-
-      else
-        if type.eql? "replace"
-          result =  "NOT_STORED"
-        else
-          node = Node.new(data)
-          prepend_node(node)
-          @hash_table[key]=node
-
-          result = "STORED"
-        end
+      case type
+        when "set"
+          result = set(key,flag,exp_time,data_length,data)
+        when "add"
+          result = add(key,flag,exp_time,data_length,data)
+        when "replace"
+          result = replace(key,flag,exp_time,data_length,data)
+        when "cas"
+          result = cas(key,flag,exp_time,data_length,data,cas_unique[0])
       end
 
       return result
     end
+  end
+
+  def set(key,flag,exp_time,data_length,data)
+    new_data = DataValue.new(key,flag,exp_time,data_length,data)
+
+    if @hash_table.has_key? key
+      node = @hash_table[key]
+      update_node(node, new_data)
+    else
+      insert_data(new_data)
+    end
+
+    return "STORED"
+  end
+
+  def add(key,flag,exp_time,data_length,data)
+
+    if @hash_table.has_key? key
+      node = @hash_table[key]
+      put_node_at_start(node)
+      result = "NOT_STORED"
+    else
+      new_data = DataValue.new(key,flag,exp_time,data_length,data)
+      insert_data(new_data)
+      result = "STORED"
+    end
+
+    return result
+  end
+
+  def replace(key,flag,exp_time,data_length,data)
+
+    if @hash_table.has_key? key
+      node = @hash_table[key]
+      new_data = DataValue.new(key,flag,exp_time,data_length,data)
+      update_node(node, new_data)
+      result = "STORED"
+    else
+      result = "NOT_STORED"
+    end
+
+    return result
+  end
+
+  def cas(key,flag,exp_time,data_length,data,cas_unique)
+    if @hash_table.has_key? key
+      node = @hash_table[key]
+      old_data = node.data
+
+      if old_data.cas.to_i == cas_unique.to_i
+        new_data = DataValue.new(key,flag,exp_time,data_length,data)
+        update_node(node, new_data)
+        result = "STORED"
+      else
+        put_node_at_start(node)
+        result = "EXISTS"
+      end
+
+    else
+      result = "NOT_FOUND"
+    end
+
+    return result
+  end
+
+  def remove_data(key)
+    delete_node(@hash_table[key])
+    @hash_table.delete(key)
+  end
+
+  def expired_key(key)
+    data = @hash_table[key].data
+    exp_time = data.exp_time
+    is_expired =  exp_time.to_i != 0 && Time.now.to_i > exp_time
+
+    if is_expired
+      remove_data(key)
+    end
+
+    return is_expired
   end
 
   def concat_data(type,key,data_length,data)
@@ -123,12 +190,6 @@ class Cache extend MonitorMixin
       return result
 
     end
-  end
-
-  def update_node(node,data)
-    node.data = data
-    delete_node(node)
-    prepend_node(node)
   end
 
   def delete_node(node)
@@ -162,4 +223,19 @@ class Cache extend MonitorMixin
 
   end
 
+  def insert_data(new_data)
+    new_node = Node.new(new_data)
+    prepend_node(new_node)
+    @hash_table[new_data.key] = new_node
+  end
+
+  def update_node(node, new_data)
+    put_node_at_start(node)
+    node.data = new_data
+  end
+
+  def put_node_at_start(node)
+    delete_node(node)
+    prepend_node(node)
+  end
 end
