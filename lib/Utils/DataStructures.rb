@@ -202,7 +202,7 @@ class Cache extend MonitorMixin
   def memory_crawler(wait_time)
     Thread.new do
       loop do
-        sleep(10)
+        sleep(wait_time)
         self.synchronize do
 
           node_iterator = @last_node
