@@ -1,32 +1,41 @@
 require 'socket'
-require_relative '../Utils/InputParser'
-require_relative '../Utils/DataStructures'
+require_relative '../Utils/input_parser'
+require_relative '../Utils/data_structures'
 
 class Server
-  include CommandParsing
+  include InputParser
 
   ADD_CMDS = ["set","add","replace","cas"]
   CONCAT_CMD = ["append","prepend"]
 
   def initialize(address,port)
-    @socket = TCPServer.open(address, port)
-    puts "Server started."
-
+    @address = address
+    @port = port
     @cache = Cache.new
 
-    run_server
   end
 
-  private
-  def run_server
-    loop do
-      Thread.new(@socket.accept) do |client|
-        puts "open session of: #{client}"
-        run(client)
-      end
+  def close_server
+    if @socket!= nil
+      @socket.close
     end
   end
 
+  def start_server
+    @socket = TCPServer.open(@address,@port)
+    puts "Server started."
+
+    loop do
+      Thread.new(@socket.accept) do |client|
+        puts "opening session of: #{client}"
+        run(client)
+      end
+    end
+  rescue IOError,Interrupt
+    puts "Server closed."
+  end
+
+  private
   def run(client)
     loop do
       cmd = client.gets
@@ -107,4 +116,5 @@ class Server
   end
 end
 
-Server.new("127.0.0.1",2000 )
+s = Server.new("localhost",2000)
+s.start_server

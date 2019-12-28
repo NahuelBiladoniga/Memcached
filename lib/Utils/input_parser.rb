@@ -1,15 +1,18 @@
 
-module CommandParsing
+module InputParser
 
   RETRIVAL_CMDS = ["get","gets"]
   STORAGE_CMDS = ["set","add","replace","append","prepend","cas"]
 
-  def is_retrival_cmd(cmd)
-    return RETRIVAL_CMDS.include? (cmd.split(" ")[0])
+  def is_positive_integer(num)
+    Integer(num)
+    num.to_i >= 0
+  rescue
+    false
   end
 
-  def is_positive_integer(num)
-    return Integer(num) rescue false && num.to_i >= 0
+  def is_retrival_cmd(cmd)
+    RETRIVAL_CMDS.include? (cmd.split(" ")[0])
   end
 
   def validate_data(cmd,data)
