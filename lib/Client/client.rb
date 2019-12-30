@@ -1,7 +1,7 @@
 require 'socket'
 require 'logger'
 
-class MemClient
+class Client
 
   def initialize(address,port)
     @address = address
@@ -131,7 +131,7 @@ class MemClient
     validate_connection
     validate_parameters(flag,exp_time,data_length,data,no_reply,cas_unique)
 
-    @socket.puts("#{command} #{key} #{flag} #{exp_time} #{data_length} #{cas_unique}" +
+    @socket.puts("#{command} #{key} #{flag} #{exp_time} #{data_length} #{cas_unique} " +
     (no_reply ? "noreply" : ""))
     @socket.puts(data)
 
@@ -149,6 +149,7 @@ class Value
     @flags = flags
     @data_length = data_length
     @data = data
+    @cas_unique = -1
     if cas_unique.length == 1
       @cas_unique = cas_unique[0]
     end

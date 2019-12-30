@@ -49,6 +49,27 @@ class Cache extend MonitorMixin
     end
   end
 
+  def concat_data(type,key,data_length,data)
+    self.synchronize do
+
+      if @hash_table.has_key?(key)
+        hash_data = @hash_table[key].data
+
+        new_data_length = data_length.to_i + hash_data.data_length.to_i
+        new_data = (type.eql? "append") ? hash_data.data + data : data + hash_data.data
+
+        hash_data.change_data(new_data_length,new_data)
+
+        result="STORED"
+      else
+        result = "NOT_STORED"
+      end
+
+      return result
+
+    end
+  end
+
   private
 
   def set(key,flag,exp_time,data_length,data)
@@ -94,6 +115,7 @@ class Cache extend MonitorMixin
   end
 
   def cas(key,flag,exp_time,data_length,data,cas_unique)
+
     if @hash_table.has_key? key
       node = @hash_table[key]
       old_data = node.data
@@ -129,27 +151,6 @@ class Cache extend MonitorMixin
     end
 
     return is_expired
-  end
-
-  def concat_data(type,key,data_length,data)
-    self.synchronize do
-
-      if @hash_table.has_key?(key)
-        hash_data = @hash_table[key].data
-
-        new_data_length = data_length+hash_data.data_length
-        new_data = (type.eql? "append") ? hash_data.data + data : data + hash_data.data
-
-        hash_data.change_data(new_data_length,new_data)
-
-        result="STORED"
-      else
-        result = "NOT_STORED"
-      end
-
-      return result
-
-    end
   end
 
   def delete_node(node)

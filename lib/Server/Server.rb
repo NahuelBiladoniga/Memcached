@@ -12,7 +12,6 @@ class Server
     @address = address
     @port = port
     @cache = Cache.new
-
   end
 
   def close_server
@@ -23,16 +22,15 @@ class Server
 
   def start_server
     @socket = TCPServer.open(@address,@port)
-    puts "Server started."
-
+    #puts "Server started."
     loop do
       Thread.new(@socket.accept) do |client|
-        puts "opening session of: #{client}"
+        #puts "opening session of: #{client}"
         run(client)
       end
     end
   rescue IOError,Interrupt
-    puts "Server closed."
+    #puts "Server closed."
   end
 
   private
@@ -73,7 +71,10 @@ class Server
           if !(data_checker.eql? "OK")
             client.puts data_checker
           else
-            client.puts storage_operation(cmd,data)
+            result = storage_operation(cmd,data)
+            if !(result.eql? "")
+              client.puts result
+            end
           end
 
         end
@@ -83,8 +84,7 @@ class Server
 
   def retrival_operation(cmd)
     cmd_splited = cmd.split(" ")
-    response = @cache.get_values((cmd_splited[0].eql? "gets"),cmd_splited[1..cmd_splited.length-1])
-    (cmd_splited[5].eql? "noreply") ? "" : response
+    @cache.get_values((cmd_splited[0].eql? "gets"),cmd_splited[1..cmd_splited.length-1])
   end
 
   def storage_operation(cmd,data)
@@ -95,19 +95,25 @@ class Server
     flags = cmd_splited[2]
     exp_time = cmd_splited[3]
     data_length = cmd_splited[4]
-
-    if ADD_CMDS.include? name
-      @cache.insert(name,key,flags,exp_time,data_length,data,
-        (name.eql? "cas") ? cmd_splited[5] : nil)
+    
+    if (name.eql? "cas")
+      noreply = cmd_splited.length == 7 && (cmd_splited[6].eql? "noreply")
     else
-      @cache.concat_data(name,key,data_length,data)
+      noreply = cmd_splited.length == 6 && (cmd_splited[5].eql? "noreply")
     end
 
+    if ADD_CMDS.include? name
+      result = @cache.insert(name,key,flags,exp_time,data_length,data,
+        (name.eql? "cas") ? cmd_splited[5] : nil)
+    else
+      result = @cache.concat_data(name,key,data_length,data)
+    end
+    noreply ? "" : result
   end
 
   def session_was_closed(client,cmd)
     if cmd == nil
-      puts "closing session of: #{client}"
+      #puts "closing session of: #{client}"
       client.close
       true
     else
@@ -115,6 +121,3 @@ class Server
     end
   end
 end
-
-s = Server.new("localhost",2000)
-s.start_server
