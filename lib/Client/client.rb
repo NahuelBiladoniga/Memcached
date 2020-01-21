@@ -72,9 +72,9 @@ class Client
   end
 
   def send_get_command(command,*keys)
-    send_command = command+" "
+    send_command = command + " "
     keys.each do |key|
-      send_command += key + " "
+      send_command << key + " "
     end
     @socket.puts(send_command)
 

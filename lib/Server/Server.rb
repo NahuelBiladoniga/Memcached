@@ -16,21 +16,22 @@ class Server
 
   def close_server
     if @socket!= nil
+      puts "Server closed."
       @socket.close
     end
   end
 
   def start_server
     @socket = TCPServer.open(@address,@port)
-    #puts "Server started."
+    puts "Server started."
     loop do
       Thread.new(@socket.accept) do |client|
-        #puts "opening session of: #{client}"
+        puts "opening session of: #{client}"
         run(client)
       end
     end
   rescue IOError,Interrupt
-    #puts "Server closed."
+    puts "Server closed."
   end
 
   private
@@ -61,7 +62,7 @@ class Server
 
           data = client.gets
 
-          if session_was_closed(client,cmd)
+          if session_was_closed(client,data)
             break
           end
 
@@ -80,6 +81,11 @@ class Server
         end
       end
     end
+  rescue Errno::ECONNABORTED
+    puts "closing session of: #{client}"
+    client.close
+  rescue Errno::EPIPE
+    puts "closing session of: #{client}"
   end
 
   def retrival_operation(cmd)
@@ -95,7 +101,7 @@ class Server
     flags = cmd_splited[2]
     exp_time = cmd_splited[3]
     data_length = cmd_splited[4]
-    
+
     if (name.eql? "cas")
       noreply = cmd_splited.length == 7 && (cmd_splited[6].eql? "noreply")
     else
@@ -112,8 +118,8 @@ class Server
   end
 
   def session_was_closed(client,cmd)
-    if cmd == nil
-      #puts "closing session of: #{client}"
+    if cmd == nil || (cmd.chomp.eql? "q")
+      puts "closing session of: #{client}"
       client.close
       true
     else
@@ -121,3 +127,5 @@ class Server
     end
   end
 end
+
+Server.new("localhost",2000).start_server

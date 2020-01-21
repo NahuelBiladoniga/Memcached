@@ -48,7 +48,7 @@ module InputParser
       result = "ERROR"
     end
 
-    return result
+    result
 
   end
 end
