@@ -1,4 +1,3 @@
-
 module InputParser
 
   RETRIVAL_CMDS = ["get","gets"]
@@ -48,7 +47,7 @@ module InputParser
       result = "ERROR"
     end
 
-    return result
+    result
 
   end
 end

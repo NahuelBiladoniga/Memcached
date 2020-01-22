@@ -1,17 +1,16 @@
 require 'monitor'
 
 class Cache extend MonitorMixin
-
   include MonitorMixin
 
-  def initialize
+  def initialize(time_crawler = 30)
     super()
 
     @hash_table = Hash.new
     @first_node = nil
     @last_node = nil
 
-    memory_crawler(5)
+    memory_crawler(time_crawler)
 
   end
 
@@ -35,14 +34,14 @@ class Cache extend MonitorMixin
     self.synchronize do
 
       case type
-        when "set"
-          result = set(key,flag,exp_time,data_length,data)
-        when "add"
-          result = add(key,flag,exp_time,data_length,data)
-        when "replace"
-          result = replace(key,flag,exp_time,data_length,data)
-        when "cas"
-          result = cas(key,flag,exp_time,data_length,data,cas_unique[0])
+      when "set"
+        result = set(key,flag,exp_time,data_length,data)
+      when "add"
+        result = add(key,flag,exp_time,data_length,data)
+      when "replace"
+        result = replace(key,flag,exp_time,data_length,data)
+      when "cas"
+        result = cas(key,flag,exp_time,data_length,data,cas_unique[0])
       end
 
       return result
@@ -60,7 +59,7 @@ class Cache extend MonitorMixin
 
         hash_data.change_data(new_data_length,new_data)
 
-        result="STORED"
+        result = "STORED"
       else
         result = "NOT_STORED"
       end
@@ -75,19 +74,18 @@ class Cache extend MonitorMixin
   def set(key,flag,exp_time,data_length,data)
     new_data = DataValue.new(key,flag,exp_time,data_length,data)
 
-    if @hash_table.has_key? key
+    if @hash_table.has_key?(key)
       node = @hash_table[key]
       update_node(node, new_data)
     else
       insert_data(new_data)
     end
 
-    return "STORED"
+    "STORED"
   end
 
   def add(key,flag,exp_time,data_length,data)
-
-    if @hash_table.has_key? key
+    if @hash_table.has_key?(key)
       node = @hash_table[key]
       put_node_at_start(node)
       result = "NOT_STORED"
@@ -97,12 +95,12 @@ class Cache extend MonitorMixin
       result = "STORED"
     end
 
-    return result
+    result
   end
 
   def replace(key,flag,exp_time,data_length,data)
 
-    if @hash_table.has_key? key
+    if @hash_table.has_key?(key)
       node = @hash_table[key]
       new_data = DataValue.new(key,flag,exp_time,data_length,data)
       update_node(node, new_data)
@@ -111,12 +109,12 @@ class Cache extend MonitorMixin
       result = "NOT_STORED"
     end
 
-    return result
+    result
   end
 
   def cas(key,flag,exp_time,data_length,data,cas_unique)
 
-    if @hash_table.has_key? key
+    if @hash_table.has_key?(key)
       node = @hash_table[key]
       old_data = node.data
 
@@ -133,7 +131,7 @@ class Cache extend MonitorMixin
       result = "NOT_FOUND"
     end
 
-    return result
+    result
   end
 
   def remove_data(key)
@@ -150,7 +148,7 @@ class Cache extend MonitorMixin
       remove_data(key)
     end
 
-    return is_expired
+    is_expired
   end
 
   def delete_node(node)

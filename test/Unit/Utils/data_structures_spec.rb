@@ -1,5 +1,5 @@
-require "minitest/autorun"
-require_relative "../../lib/Utils/data_structures"
+  require "minitest/autorun"
+require_relative "../../../lib/Utils/data_structures"
 
 describe Cache do
   before do

@@ -1,5 +1,5 @@
 require "minitest/autorun"
-require_relative "../../lib/Utils/input_parser"
+require_relative "../../../lib/Utils/input_parser"
 
 describe InputParser do
   include InputParser

@@ -2,35 +2,53 @@ require 'socket'
 require_relative '../Utils/input_parser'
 require_relative '../Utils/data_structures'
 
+class ServerError < StandardError
+  def initialize(msg);
+    super(msg);
+  end
+end
+
 class Server
   include InputParser
 
   ADD_CMDS = ["set","add","replace","cas"]
   CONCAT_CMD = ["append","prepend"]
 
-  def initialize(address,port)
+  def initialize(address,port,time_crawler,is_cli = false)
     @address = address
     @port = port
-    @cache = Cache.new
+    @cache = Cache.new(time_crawler)
+    @is_cli = is_cli
   end
 
   def close_server
-    if @socket!= nil
+    if @socket != nil
+      if @is_cli
+        puts "Server closed."
+      end
       @socket.close
     end
   end
 
   def start_server
-    @socket = TCPServer.open(@address,@port)
-    #puts "Server started."
-    loop do
-      Thread.new(@socket.accept) do |client|
-        #puts "opening session of: #{client}"
-        run(client)
+    if @socket == nil
+      @socket = TCPServer.open(@address,@port)
+      if @is_cli
+        puts "Server started."
+      end
+
+      loop do
+        Thread.new(@socket.accept) do |client|
+          run(client)
+        end
       end
     end
   rescue IOError,Interrupt
-    #puts "Server closed."
+    if @is_cli
+      puts "Server closed."
+    end
+  rescue Errno::EADDRNOTAVAIL
+    raise ServerError.new("address to bind server is invalid")
   end
 
   private
@@ -61,7 +79,7 @@ class Server
 
           data = client.gets
 
-          if session_was_closed(client,cmd)
+          if session_was_closed(client,data)
             break
           end
 
@@ -80,6 +98,13 @@ class Server
         end
       end
     end
+  rescue Errno::ECONNABORTED
+    client.close
+  rescue Errno::EPIPE
+
+  rescue Errno::EMFILE
+    #TODO: Find another more stable solution
+    raise ServerError.new("too many clients")
   end
 
   def retrival_operation(cmd)
@@ -95,7 +120,7 @@ class Server
     flags = cmd_splited[2]
     exp_time = cmd_splited[3]
     data_length = cmd_splited[4]
-    
+
     if (name.eql? "cas")
       noreply = cmd_splited.length == 7 && (cmd_splited[6].eql? "noreply")
     else
@@ -112,8 +137,7 @@ class Server
   end
 
   def session_was_closed(client,cmd)
-    if cmd == nil
-      #puts "closing session of: #{client}"
+    if cmd == nil || (cmd.chomp.eql? "q")
       client.close
       true
     else
