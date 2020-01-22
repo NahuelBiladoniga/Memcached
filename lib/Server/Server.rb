@@ -1,6 +1,13 @@
 require 'socket'
+require 'optparse'
 require_relative '../Utils/input_parser'
 require_relative '../Utils/data_structures'
+
+class ServerError < StandardError
+  def initialize(msg);
+    super(msg);
+  end
+end
 
 class Server
   include InputParser
@@ -8,30 +15,41 @@ class Server
   ADD_CMDS = ["set","add","replace","cas"]
   CONCAT_CMD = ["append","prepend"]
 
-  def initialize(address,port)
+  def initialize(address,port,time_crawler,is_cli = false)
     @address = address
     @port = port
-    @cache = Cache.new
+    @cache = Cache.new(time_crawler)
+    @is_cli = is_cli
   end
 
   def close_server
-    if @socket!= nil
-      puts "Server closed."
+    if @socket != nil
+      if @is_cli
+        puts "Server closed."
+      end
       @socket.close
     end
   end
 
   def start_server
-    @socket = TCPServer.open(@address,@port)
-    puts "Server started."
-    loop do
-      Thread.new(@socket.accept) do |client|
-        puts "opening session of: #{client}"
-        run(client)
+    if @socket == nil
+      @socket = TCPServer.open(@address,@port)
+      if @is_cli
+        puts "Server started."
+      end
+
+      loop do
+        Thread.new(@socket.accept) do |client|
+          run(client)
+        end
       end
     end
   rescue IOError,Interrupt
-    puts "Server closed."
+    if @is_cli
+      puts "Server closed."
+    end
+  rescue Errno::EADDRNOTAVAIL
+    raise ServerError.new("address to bind server is invalid")
   end
 
   private
@@ -82,10 +100,11 @@ class Server
       end
     end
   rescue Errno::ECONNABORTED
-    puts "closing session of: #{client}"
     client.close
   rescue Errno::EPIPE
-    puts "closing session of: #{client}"
+
+  rescue Errno::EMFILE
+    raise ServerError.new("too many clients")
   end
 
   def retrival_operation(cmd)
@@ -119,7 +138,6 @@ class Server
 
   def session_was_closed(client,cmd)
     if cmd == nil || (cmd.chomp.eql? "q")
-      puts "closing session of: #{client}"
       client.close
       true
     else
@@ -128,4 +146,35 @@ class Server
   end
 end
 
-Server.new("localhost",2000).start_server
+class ServerParser
+  def self.parse(args)
+    @options = {:address => "localhost",:port => 11211,:time_crawler => 30}
+    opts = OptionParser.new do |opts|
+      opts.banner = "MemCached Server CLI"
+
+      opts.on('-a', '--address <address>', 'Listen on TCP port <num>, the default is port 11211.') do |port|
+        @options[:port] = port
+      end
+
+      opts.on('-p', '--port <num>', 'Listen on TCP address <num>, the default is localhost.') do |address|
+        @options[:address] = address
+      end
+
+      opts.on('-tc', '--time_crawler <num>', 'Time in seconds for the crawler to delete expired keys time_crawler <num>, the default value is 30.') do |time_crawler|
+        @options[:time_crawler] = time_crawler
+      end
+
+      opts.on('-h', '--help', OptionParser::OctalInteger, 'Help command') do |help|
+        puts opts
+        exit
+      end
+    end
+
+    opts.parse(args)
+    server = Server.new(@options[:address],@options[:port],@options[:time_crawler],true)
+    server.start_server
+
+  end
+end
+
+ServerParser.parse(ARGV)

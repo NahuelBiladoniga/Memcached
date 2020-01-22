@@ -4,14 +4,14 @@ class Cache extend MonitorMixin
 
   include MonitorMixin
 
-  def initialize
+  def initialize(time_crawler = 30)
     super()
 
     @hash_table = Hash.new
     @first_node = nil
     @last_node = nil
 
-    memory_crawler(5)
+    memory_crawler(time_crawler)
 
   end
 
@@ -60,7 +60,7 @@ class Cache extend MonitorMixin
 
         hash_data.change_data(new_data_length,new_data)
 
-        result="STORED"
+        result = "STORED"
       else
         result = "NOT_STORED"
       end

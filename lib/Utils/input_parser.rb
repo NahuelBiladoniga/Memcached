@@ -1,4 +1,3 @@
-
 module InputParser
 
   RETRIVAL_CMDS = ["get","gets"]
