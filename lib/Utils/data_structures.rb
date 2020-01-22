@@ -1,7 +1,6 @@
 require 'monitor'
 
 class Cache extend MonitorMixin
-
   include MonitorMixin
 
   def initialize(time_crawler = 30)
@@ -35,14 +34,14 @@ class Cache extend MonitorMixin
     self.synchronize do
 
       case type
-        when "set"
-          result = set(key,flag,exp_time,data_length,data)
-        when "add"
-          result = add(key,flag,exp_time,data_length,data)
-        when "replace"
-          result = replace(key,flag,exp_time,data_length,data)
-        when "cas"
-          result = cas(key,flag,exp_time,data_length,data,cas_unique[0])
+      when "set"
+        result = set(key,flag,exp_time,data_length,data)
+      when "add"
+        result = add(key,flag,exp_time,data_length,data)
+      when "replace"
+        result = replace(key,flag,exp_time,data_length,data)
+      when "cas"
+        result = cas(key,flag,exp_time,data_length,data,cas_unique[0])
       end
 
       return result

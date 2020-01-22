@@ -21,38 +21,35 @@ class Client
   end
 
   def get(*keys)
-    validate_connection
     send_get_command("get",*keys)
   end
 
   def gets(*keys)
-    validate_connection
     send_get_command("gets",*keys)
   end
 
-  def set(key,flag,exp_time,data_length,data,no_reply = false)
-    send_modify_command("set",key,flag,exp_time,data_length,data,no_reply)
+  def set(key,data,exp_time = 0,flag = 0)
+    send_modify_command("set",key,data,exp_time,flag)
   end
 
-  def add(key,flag,exp_time,data_length,data,no_reply = false)
-    send_modify_command("add",key,flag,exp_time,data_length,data,no_reply)
+  def add(key,data,exp_time = 0,flag = 0)
+    send_modify_command("add",key,data,exp_time,flag)
   end
 
-  def replace(key,flag,exp_time,data_length,data,no_reply = false)
-    send_modify_command("replace",key,flag,exp_time,data_length,data,no_reply)
+  def replace(key,data,exp_time = 0,flag = 0)
+    send_modify_command("replace",key,data,exp_time,flag)
   end
 
-  def cas(key,flag,exp_time,data_length,data,cas_unique,no_reply = false)
-    send_modify_command("cas",key,flag,exp_time,data_length,data,
-      no_reply,cas_unique)
+  def append(key,data)
+    send_modify_command("append",key,data,0,0)
   end
 
-  def prepend(key,flag,exp_time,data_length,data,no_reply = false)
-    send_modify_command("prepend",key,flag,exp_time,data_length,data,no_reply)
+  def prepend(key,data)
+    send_modify_command("prepend",key,data,0,0)
   end
 
-  def append(key,flag,exp_time,data_length,data,no_reply = false)
-    send_modify_command("append",key,flag,exp_time,data_length,data,no_reply)
+  def cas(key,data,cas_unique,exp_time = 0,flag = 0)
+    send_modify_command("cas",key,data,exp_time,flag,cas_unique)
   end
 
   private
@@ -71,6 +68,7 @@ class Client
   end
 
   def send_get_command(command,*keys)
+    validate_connection
     send_command = command + " "
     keys.each do |key|
       send_command << key + " "
@@ -87,34 +85,24 @@ class Client
       flags = value_input[2].to_i
       data_length = value_input[3].to_i
       data = data_input
+      cas_unique = (command.eql? "gets")?value_input[4]:nil
+      values.push(ClientValue.new(key,flags,data_length,data,cas_unique))
 
-      if command.eql? "gets"
-        cas_unique = value_input[4]
-        values.push(Value.new(key,flags,data_length,data,cas_unique))
-      else
-        values.push(Value.new(key,flags,data_length,data))
-      end
       value_input = @socket.gets.chomp
     end
     values
   end
 
-  def validate_parameters(flag,exp_time,data_length,data,no_reply,cas_unique)
+  def validate_parameters(exp_time,flag,cas_unique)
 
     if !is_positive_integer(flag)
       error_message = "flag must be a positive Integer"
     elsif !is_positive_integer(exp_time)
       error_message = "exp_time must be a positive Integer"
-    elsif !is_positive_integer(data_length)
-      error_message = "data_length must be a positive Integer"
     elsif !(cas_unique.eql? "") && !is_positive_integer(cas_unique)
       error_message = "cas_unique must be a positive Integer"
-    elsif data_length != data.length
-      error_message = "data_length and data must have the same length"
     elsif (flag.to_i.to_s(2).length > 16)
       error_message = "flag must have less than 16 bits"
-    elsif !!no_reply != no_reply
-      error_message = "no_reply must be boolean"
     else
       error_message = ""
     end
@@ -125,37 +113,29 @@ class Client
 
   end
 
-  def send_modify_command(command,key,flag,exp_time,data_length,data,
-    no_reply,cas_unique = "")
+  def send_modify_command(command,key,data,exp_time,flag,cas_unique = "")
     validate_connection
-    validate_parameters(flag,exp_time,data_length,data,no_reply,cas_unique)
+    validate_parameters(exp_time,flag,cas_unique)
 
-    @socket.puts("#{command} #{key} #{flag} #{exp_time} #{data_length} #{cas_unique} " +
-    (no_reply ? "noreply" : ""))
+    @socket.puts("#{command} #{key} #{flag} #{exp_time} #{data.length} #{cas_unique}")
     @socket.puts(data)
 
-    if !no_reply
-      @socket.gets
-    end
-
+    @socket.gets
   end
 
 end
 
-class Value
-  def initialize(key,flags,data_length,data,*cas_unique)
+class ClientValue
+  def initialize(key,flags,data_length,data, cas_unique)
     @key = key
     @flags = flags
     @data_length = data_length
     @data = data
-    @cas_unique = -1
-    if cas_unique.length == 1
-      @cas_unique = cas_unique[0]
-    end
+    @cas_unique = cas_unique
   end
 
   def to_s
-    "VALUE #{@key} #{@flags} #{@data_length} #{@data}"
+    ("VALUE #{@key} #{@flags} #{@data_length} #{@data} #{(cas_unique==nil)?"":cas_unique}").rstrip
   end
 
   attr_reader :key,:flags,:data_length,:data,:cas_unique
