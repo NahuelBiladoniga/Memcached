@@ -34,7 +34,7 @@
             </elementProp>
             <elementProp name="port" elementType="Argument">
               <stringProp name="Argument.name">port</stringProp>
-              <stringProp name="Argument.value">2000</stringProp>
+              <stringProp name="Argument.value">11211</stringProp>
               <stringProp name="Argument.desc">TCP Server Port</stringProp>
               <stringProp name="Argument.metadata">=</stringProp>
             </elementProp>
