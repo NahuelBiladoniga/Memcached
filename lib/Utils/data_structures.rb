@@ -11,7 +11,6 @@ class Cache extend MonitorMixin
     @last_node = nil
 
     memory_crawler(time_crawler)
-
   end
 
   def get_values(cas,keys)
@@ -25,8 +24,7 @@ class Cache extend MonitorMixin
         end
       end
 
-      return values
-
+      values
     end
   end
 
@@ -44,7 +42,7 @@ class Cache extend MonitorMixin
         result = cas(key,flag,exp_time,data_length,data,cas_unique[0])
       end
 
-      return result
+      result
     end
   end
 
@@ -64,8 +62,7 @@ class Cache extend MonitorMixin
         result = "NOT_STORED"
       end
 
-      return result
-
+      result
     end
   end
 
@@ -254,11 +251,11 @@ class DataValue
   end
 
   def print_with_cas
-    return "VALUE #{@key} #{@flag} #{@data_length} #{@cas}\r\n#{@data}\r\n"
+    "VALUE #{@key} #{@flag} #{@data_length} #{@cas}\r\n#{@data}\r\n"
   end
 
   def print
-    return "VALUE #{@key} #{@flag} #{@data_length}\r\n#{@data}\r\n"
+    "VALUE #{@key} #{@flag} #{@data_length}\r\n#{@data}\r\n"
   end
 
   attr_accessor :exp_time
