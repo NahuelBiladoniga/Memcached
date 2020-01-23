@@ -103,7 +103,6 @@ class Server
   rescue Errno::EPIPE
 
   rescue Errno::EMFILE
-    #TODO: Find another more stable solution
     raise ServerError.new("too many clients")
   end
 
