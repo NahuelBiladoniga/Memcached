@@ -33,10 +33,10 @@ class Server
       begin
         @socket = TCPServer.open(@address,@port)
         server_started = true
-      rescue Errno::EADDRNOTAVAIL
+      rescue Errno::EADDRNOTAVAIL, Errno::EADDRINUSE
         server_started = false
       end
-      raise ServerHandler::AddressInvalid unless server_started
+      raise ServerHandler::BindingFailed unless server_started
 
       if @is_cli
         puts SERVER_STARTED_MSG

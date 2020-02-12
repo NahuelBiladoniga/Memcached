@@ -1,7 +1,7 @@
 class ServerHandler
-  ADDRESS_ERRROR_MSG = "Address to bind server is invalid."
+  ADDRESS_ERRROR_MSG = "Failed to bind address."
   CLIENT_OVERFLOW_ERROR = "Clients overflow."
-  class AddressInvalid < StandardError
+  class BindingFailed < StandardError
     def message
       ADDRESS_ERRROR_MSG
     end
