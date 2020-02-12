@@ -1,5 +1,5 @@
-  require "minitest/autorun"
-require_relative "../../../lib/Utils/data_structures"
+require "minitest/autorun"
+require_relative "../../../lib/Utils/cache"
 
 describe Cache do
   before do
@@ -8,7 +8,7 @@ describe Cache do
 
   describe "set command" do
     it "non existing key" do
-    @cache.insert("set","test1",124,0,3,"abc")
+      @cache.insert("set","test1",124,0,3,"abc")
       assert_equal  "VALUE test1 124 3\r\nabc\r\n",@cache.get_values(false,["test1"])[0]
     end
     it "existing previous key" do
@@ -84,25 +84,6 @@ describe Cache do
       @cache.concat_data("append","test1",2,"ok")
       assert_equal  "VALUE test1 124 5\r\nabcok\r\n",@cache.get_values(false,["test1"])[0]
     end
-  end
-
-  describe "time checker" do
-    it "key should stay before time passed" do
-      @cache.insert("set","test1",124,5,3,"abc")
-      sleep 3
-      assert_equal  "VALUE test1 124 3\r\nabc\r\n",@cache.get_values(false,["test1"])[0]
-    end
-    it "key should disappear after time with memory crawler" do
-      @cache.insert("set","test1",124,2,3,"abc")
-      sleep 5
-      assert_nil @cache.get_values(false,["test1"])[0]
-    end
-    it "key should disappear after time because of get command" do
-      @cache.insert("set","test1",124,2,3,"abc")
-      sleep 3
-      assert_nil @cache.get_values(false,["test1"])[0]
-    end
-
   end
 
 end

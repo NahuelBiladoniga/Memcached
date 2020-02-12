@@ -1,55 +1,63 @@
 require 'socket'
+require_relative 'client_handler'
+require_relative '../Utils/commands'
 
 class Client
+  include Commands
 
-  def initialize(address,port)
+  def initialize(address, port)
     @address = address
     @port = port
+    @is_open = false
+    @socket = nil
   end
 
   def start_client
-    @socket = TCPSocket.new(@address, @port)
-    @is_open = true
-  rescue Errno::ECONNREFUSED
-    @is_open = false
-    raise ClientError.new("Could not connect to: #{@address}:#{@port}")
+    begin
+      @socket = TCPSocket.open(@address, @port)
+      @is_open = true
+    rescue Errno::ECONNREFUSED
+      @is_open = false
+    end
+    raise ClientHandler::InvalidServerAddress unless @is_open
   end
 
   def close_client
+    raise ClientHandler::ClientNotConnected if @socket == nil
     @socket.close
     @is_open = false
   end
 
   def get(*keys)
-    send_get_command("get",*keys)
+    send_get_command(GET_CMD, *keys)
   end
 
   def gets(*keys)
-    send_get_command("gets",*keys)
+    send_get_command(GETS_CMD, *keys)
   end
 
-  def set(key,data,exp_time = 0,flag = 0)
-    send_modify_command("set",key,data,exp_time,flag)
+  def set(key, data, exp_time = 0, flag = 0)
+    send_modify_command(SET_CMD, key, data, exp_time, flag)
   end
 
-  def add(key,data,exp_time = 0,flag = 0)
-    send_modify_command("add",key,data,exp_time,flag)
+  def add(key, data, exp_time = 0, flag = 0)
+    send_modify_command(ADD_CMD, key, data, exp_time, flag)
   end
 
-  def replace(key,data,exp_time = 0,flag = 0)
-    send_modify_command("replace",key,data,exp_time,flag)
+  def replace(key, data, exp_time = 0, flag = 0)
+    send_modify_command(REPLACE_CMD, key, data, exp_time, flag)
   end
 
-  def append(key,data)
-    send_modify_command("append",key,data,0,0)
+  def append(key, data)
+    send_modify_command(APPEND_CMD, key, data, 0, 0)
   end
 
-  def prepend(key,data)
-    send_modify_command("prepend",key,data,0,0)
+  def prepend(key, data)
+    send_modify_command(PREPEND_CMD, key, data, 0, 0)
   end
 
-  def cas(key,data,cas_unique,exp_time = 0,flag = 0)
-    send_modify_command("cas",key,data,exp_time,flag,cas_unique)
+  def cas(key, data, cas_unique, exp_time = 0, flag = 0)
+    send_modify_command(CAS_CMD, key, data, exp_time, flag, cas_unique)
   end
 
   private
@@ -62,88 +70,57 @@ class Client
   end
 
   def validate_connection
-    if !@is_open
-      raise ClientError.new("Connection needs to be established first")
-    end
+    raise ClientHandler::ClientNotConnected unless @is_open
   end
 
-  def send_get_command(command,*keys)
+  def send_get_command(command, *keys)
     validate_connection
     send_command = command + " "
     keys.each do |key|
       send_command << key + " "
     end
+
     @socket.puts(send_command)
 
-    values = []
-    value_input = @socket.gets.chomp
-    unless value_input.eql? "END"
-      value_input = value_input.split(" ")
-      data_input = @socket.gets.chomp
+    result = ""
+    begin
+      line = @socket.gets.chomp
+      result += "#{line}\n"
+    end while !(line.eql?END_LINE)
 
-      key = value_input[1]
-      flags = value_input[2].to_i
-      data_length = value_input[3].to_i
-      data = data_input
-      cas_unique = (command.eql? "gets")?value_input[4]:nil
-      values.push(ClientValue.new(key,flags,data_length,data,cas_unique))
-
-      value_input = @socket.gets.chomp
-    end
-    values
+    result
   end
 
-  def validate_parameters(exp_time,flag,cas_unique)
-
-    if !is_positive_integer(flag)
-      error_message = "flag must be a positive Integer"
-    elsif !is_positive_integer(exp_time)
-      error_message = "exp_time must be a positive Integer"
-    elsif !(cas_unique.eql? "") && !is_positive_integer(cas_unique)
-      error_message = "cas_unique must be a positive Integer"
-    elsif (flag.to_i.to_s(2).length > 16)
-      error_message = "flag must have less than 16 bits"
-    else
-      error_message = ""
-    end
-
-    if !(error_message.eql? "")
-      raise ClientError.new(error_message)
-    end
-
-  end
-
-  def send_modify_command(command,key,data,exp_time,flag,cas_unique = "")
+  def send_modify_command(command, key, data, exp_time, flag, cas_unique = "")
     validate_connection
-    validate_parameters(exp_time,flag,cas_unique)
+    validate_parameters(exp_time, flag, cas_unique)
 
     @socket.puts("#{command} #{key} #{flag} #{exp_time} #{data.length} #{cas_unique}")
     @socket.puts(data)
 
-    @socket.gets
+    @socket.gets.chomp
   end
 
-end
 
-class ClientValue
-  def initialize(key,flags,data_length,data, cas_unique)
-    @key = key
-    @flags = flags
-    @data_length = data_length
-    @data = data
-    @cas_unique = cas_unique
+  def validate_parameters(exp_time, flag, cas_unique)
+    FLAG_ERROR_MSG = "flag must be a positive Integer"
+    EXP_TIME_ERROR_MSG = "exp_time must be a positive Integer"
+    CAS_UNIQUE_ERROR_MSG = "cas_unique must be a positive Integer"
+    FLAG_LENGTH_ERROR_MSG = "flag must have less than 16 bits"
+
+    if !is_positive_integer(flag)
+      error_message = FLAG_ERROR_MSG
+    elsif !is_positive_integer(exp_time)
+      error_message = EXP_TIME_ERROR_MSG
+    elsif !(cas_unique.eql? "") && !(is_positive_integer(cas_unique))
+      error_message = CAS_UNIQUE_ERROR_MSG
+    elsif flag.to_i.to_s(2).length > 16
+      error_message = FLAG_LENGTH_ERROR_MSG
+    else
+      error_message = ""
+    end
+
+    raise ClientHandler::InvalidParameters.new(error_message) unless error_message.eql? ""
   end
 
-  def to_s
-    ("VALUE #{@key} #{@flags} #{@data_length} #{@data} #{(cas_unique==nil)?"":cas_unique}").rstrip
-  end
-
-  attr_reader :key,:flags,:data_length,:data,:cas_unique
-
-end
-
-class ClientError < StandardError
-  def initialize(msg);
-    super(msg);
-  end
 end
