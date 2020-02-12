@@ -3,7 +3,7 @@ require_relative 'server'
 
 class ServerParser
   def self.parse(args)
-    @options = {:address => "localhost",:port => 11211,:time_crawler => 30}
+    @options = {:address => "localhost", :port => 11211, :time_crawler => 30}
     opts = OptionParser.new do |opts|
       opts.banner = "MemCached Server CLI"
 
