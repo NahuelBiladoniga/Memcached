@@ -1,12 +1,8 @@
-require 'monitor'
-require_relative 'data_structures'
+require_relative 'memory'
+require_relative 'commands'
 
 class Cache
-
-  STORED_MSG = "STORED"
-  NOT_STORED_MSG = "NOT_STORED"
-  EXISTS_MSG = "EXISTS"
-  NOT_FOUND_MSG = "NOT_FOUND"
+  include Commands
 
   def initialize(time_crawler = 30)
     @memory = Memory.new(time_crawler)
@@ -33,13 +29,13 @@ class Cache
       new_data = DataValue.new(key, flag, exp_time, data_length, data)
 
       case type
-      when "set"
+      when SET_CMD
         result = set(new_data)
-      when "add"
+      when ADD_CMD
         result = add(new_data)
-      when "replace"
+      when REPLACE_CMD
         result = replace(new_data)
-      when "cas"
+      when CAS_CMD
         result = cas(new_data, cas_unique[0])
       end
 
@@ -52,7 +48,7 @@ class Cache
         hash_data = @memory.get_data(key)
 
         new_data_length = data_length.to_i + hash_data.data_length.to_i
-        new_data = (type.eql? "append") ? hash_data.data + data : data + hash_data.data
+        new_data = (type.eql? APPEND_CMD) ? hash_data.data + data : data + hash_data.data
 
         hash_data.change_data(new_data_length, new_data)
 

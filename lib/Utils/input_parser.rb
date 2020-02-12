@@ -1,13 +1,11 @@
+require_relative 'commands'
 module InputParser
-
+  include Commands
+  
   SUCCESS_MSG = "OK"
   ERROR_MSG = "ERROR"
   ERROR_DATA_CHUNK = "CLIENT_ERROR bad data chunk"
   ERROR_LINE_FORMAT = "CLIENT_ERROR bad command line format"
-  RETRIVAL_CMDS = ["get", "gets"]
-  ADD_CMDS = ["set", "add", "replace", "cas"]
-  CONCAT_CMD = ["append", "prepend"]
-  STORAGE_CMDS  = ADD_CMDS + CONCAT_CMD
 
 
   def is_positive_integer(num)
@@ -35,7 +33,7 @@ module InputParser
     elsif STORAGE_CMDS.include? command
 
       if cmd_splited.length < 5 ||
-        cmd_splited.length > ((command.eql? "cas") ? 7 : 6)
+        cmd_splited.length > ((command.eql? CAS_CMD) ? 7 : 6)
         result = ERROR_MSG
       else
         result = SUCCESS_MSG

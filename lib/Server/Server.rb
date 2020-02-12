@@ -1,16 +1,15 @@
 require 'socket'
 require_relative 'server_handler'
 require_relative '../Utils/input_parser'
+require_relative '../Utils/commands'
 require_relative '../Utils/cache'
 
 class Server
   include InputParser
+  include Commands
 
   SERVER_STARTED_MSG = "Server started."
   SERVER_ENDED_MSG = "Server closed."
-  NO_REPLY = "noreply"
-  END_LINE = "END"
-  END_CLIENT = "q"
 
   def initialize(address, port , time_crawler, is_cli = false)
     @address = address
@@ -112,7 +111,7 @@ class Server
 
   def retrival_operation(cmd)
     cmd_splited = cmd.split(" ")
-    @cache.get_values((cmd_splited[0].eql? "gets"), cmd_splited[1..cmd_splited.length-1])
+    @cache.get_values((cmd_splited[0].eql? GETS_CMD), cmd_splited[1..cmd_splited.length-1])
   end
 
   def storage_operation(cmd, data)
@@ -124,7 +123,7 @@ class Server
     exp_time = cmd_splited[3]
     data_length = cmd_splited[4]
 
-    if (name.eql? "cas")
+    if (name.eql? CAS_CMD)
       noreply = cmd_splited.length == 7 && (cmd_splited[6].eql? NO_REPLY_MSG)
     else
       noreply = cmd_splited.length == 6 && (cmd_splited[5].eql? NO_REPLY_MSG)
@@ -132,7 +131,7 @@ class Server
 
     if ADD_CMDS.include? name
       result = @cache.insert(name, key, flags, exp_time, data_length, data,
-        (name.eql? "cas") ? cmd_splited[5] : nil)
+        (name.eql? CAS_CMD) ? cmd_splited[5] : nil)
     else
       result = @cache.concat_data(name, key, data_length, data)
     end

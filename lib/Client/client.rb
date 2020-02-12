@@ -1,7 +1,9 @@
 require 'socket'
 require_relative 'client_handler'
+require_relative '../Utils/commands'
 
 class Client
+  include Commands
 
   def initialize(address, port)
     @address = address
