@@ -29,35 +29,35 @@ class Client
   end
 
   def get(*keys)
-    send_get_command("get", *keys)
+    send_get_command(GET_CMD, *keys)
   end
 
   def gets(*keys)
-    send_get_command("gets", *keys)
+    send_get_command(GETS_CMD, *keys)
   end
 
   def set(key, data, exp_time = 0, flag = 0)
-    send_modify_command("set", key, data, exp_time, flag)
+    send_modify_command(SET_CMD, key, data, exp_time, flag)
   end
 
   def add(key, data, exp_time = 0, flag = 0)
-    send_modify_command("add", key, data, exp_time, flag)
+    send_modify_command(ADD_CMD, key, data, exp_time, flag)
   end
 
   def replace(key, data, exp_time = 0, flag = 0)
-    send_modify_command("replace", key, data, exp_time, flag)
+    send_modify_command(REPLACE_CMD, key, data, exp_time, flag)
   end
 
   def append(key, data)
-    send_modify_command("append", key, data, 0, 0)
+    send_modify_command(APPEND_CMD, key, data, 0, 0)
   end
 
   def prepend(key, data)
-    send_modify_command("prepend", key, data, 0, 0)
+    send_modify_command(PREPEND_CMD, key, data, 0, 0)
   end
 
   def cas(key, data, cas_unique, exp_time = 0, flag = 0)
-    send_modify_command("cas", key, data, exp_time, flag, cas_unique)
+    send_modify_command(CAS_CMD, key, data, exp_time, flag, cas_unique)
   end
 
   private
@@ -86,7 +86,7 @@ class Client
     begin
       line = @socket.gets.chomp
       result += "#{line}\n"
-    end while !(line.eql?"END")
+    end while !(line.eql?END_LINE)
 
     result
   end
