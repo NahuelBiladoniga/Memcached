@@ -103,15 +103,19 @@ class Client
 
 
   def validate_parameters(exp_time, flag, cas_unique)
+    FLAG_ERROR_MSG = "flag must be a positive Integer"
+    EXP_TIME_ERROR_MSG = "exp_time must be a positive Integer"
+    CAS_UNIQUE_ERROR_MSG = "cas_unique must be a positive Integer"
+    FLAG_LENGTH_ERROR_MSG = "flag must have less than 16 bits"
 
     if !is_positive_integer(flag)
-      error_message = "flag must be a positive Integer"
+      error_message = FLAG_ERROR_MSG
     elsif !is_positive_integer(exp_time)
-      error_message = "exp_time must be a positive Integer"
+      error_message = EXP_TIME_ERROR_MSG
     elsif !(cas_unique.eql? "") && !(is_positive_integer(cas_unique))
-      error_message = "cas_unique must be a positive Integer"
+      error_message = CAS_UNIQUE_ERROR_MSG
     elsif flag.to_i.to_s(2).length > 16
-      error_message = "flag must have less than 16 bits"
+      error_message = FLAG_LENGTH_ERROR_MSG
     else
       error_message = ""
     end
